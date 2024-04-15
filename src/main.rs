@@ -1,9 +1,10 @@
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use std::{fs, thread};
+use std::thread;
 
 use sysinfo::Components;
+mod config;
 
 fn main() {
     let result1_cache = Arc::new(Mutex::new(String::new()));
@@ -68,6 +69,8 @@ fn temperature(_file_path: &Path) -> String {
 
 #[cfg(test)]
 mod tests {
+    use crate::config::configuration::get_configuration;
+
 //     use super::temperature;
 // 
 //     #[test]
@@ -77,4 +80,8 @@ mod tests {
 //         println!("{content}");
 //         println!("{}", content.len());
 //     }
+    #[test]
+    fn test_configuration() {
+        get_configuration();
+    }
 }

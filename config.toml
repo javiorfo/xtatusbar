@@ -1,0 +1,5 @@
+[cpu]
+time = 1000
+
+[temperature]
+time = 100
