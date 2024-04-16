@@ -24,6 +24,6 @@ pub fn get_configuration() -> Config {
         .expect("Error reading file");
 
     let config: Config = from_str(&toml).expect("Error parsing TOML");
+//     println!("{:?}", config);
     config
-//     println!("{:?}", parsed_toml);
 }
