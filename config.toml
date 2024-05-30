@@ -1,0 +1,58 @@
+[general]
+separator = "|"
+
+[cpu]
+position = 1
+time = 1000
+name = "CPU"
+icon = " "
+
+[ram]
+position = 2
+time = 1000
+name = "RAM"
+icon = " "
+
+[temperature]
+position = 3
+time = 100
+name = "TEMP"
+icon = "󰏈 " 
+
+[disk]
+position = 4
+time = 1000
+name = "DISK"
+icon = "󰋊 "
+
+[volume]
+position = 5
+time = 10
+name = "VOL"
+icon_active = " " 
+icon_muted = "󰖁 " 
+
+[network]
+position = 6
+time = 10000
+name_eth = "ETH"
+name_wifi = "WIFI"
+icon_up = "󰀂 " 
+icon_down = "󰯡 " 
+
+[battery]
+# position = 4
+time = 10000
+name = "BAT"
+icon_full = "󰁹" 
+icon_medium = "󰁿" 
+icon_low = "󰁺" 
+
+[date]
+position = 7
+time = 10000
+format = "day dd/MM/yyyy hh:mm"
+icon = " "
+
+[weather]
+
