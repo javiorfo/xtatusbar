@@ -5,7 +5,6 @@
 #include <unistd.h>
 #include <string.h>
 #include "config.h"
-// #include "xtatusbar.h"
 
 #define MAX_STRING_LENGTH 100
 #define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof(arr[0]))
@@ -13,21 +12,12 @@
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static size_t comp_size = ARRAY_LENGTH(components);
 
-char string_one[10] = "";
-char string_temperature[10] = "";
-
-char *stringos[] = {
-    string_one,
-    string_temperature
-};
-
-
 void *thread_component(void *arg) {
     int result;
     Component *comp = (Component*)arg;
     while (1) {
         pthread_mutex_lock(&mutex);
-        result = comp->function_int();
+        result = comp->fn_int();
         sprintf(comp->result, comp->head, result);
         pthread_mutex_unlock(&mutex);
         usleep(comp->time);
@@ -35,7 +25,7 @@ void *thread_component(void *arg) {
     return NULL;
 }
 
-void *thread_final(void *arg) {
+void *thread_principal(void *arg) {
     char final_result[MAX_STRING_LENGTH];
     while (1) {
         char final[MAX_STRING_LENGTH] = "";
@@ -53,25 +43,18 @@ void *thread_final(void *arg) {
 }
 
 int main() {
-//     pthread_t thread1, thread2, thread_final1;
-    pthread_t thread_final1;
-    pthread_t threads[comp_size] = {};
+    pthread_t thread_final;
+    pthread_t threads[comp_size];
+
     for (int i = 0; i < comp_size; i++) {
         pthread_create(&threads[i], NULL, thread_component, &components[i]);
     }
-    pthread_create(&thread_final1, NULL, thread_final, NULL);
+    pthread_create(&thread_final, NULL, thread_principal, NULL);
     
-        // Create threads
-//     pthread_create(&thread1, NULL, thread_component, &comp2);
-//     pthread_create(&thread2, NULL, thread_component, &comp2);
-
-    // Join threads
     for (int i = 0; i < comp_size; i++) {
         pthread_join(threads[i], NULL);
     }
-//     pthread_join(thread1, NULL);
-//     pthread_join(thread2, NULL);
-    pthread_join(thread_final1, NULL);
+    pthread_join(thread_final, NULL);
 
     return 0;
 }

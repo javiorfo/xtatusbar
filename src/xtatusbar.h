@@ -1,10 +1,10 @@
-typedef int (*FunctionInt)();
-typedef char* (*FunctionString)();
+typedef int (*function_int)();
+typedef char* (*function_string)();
 
 typedef struct {
     char *head;
     int time;
-    FunctionInt function_int;
+    function_int fn_int;
     char result[10];
 } Component;
 
