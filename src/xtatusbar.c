@@ -4,6 +4,7 @@
 #include <sys/sysinfo.h>
 #include <unistd.h>
 #include <string.h>
+#include <time.h>
 #include "config.h"
 
 #define MAX_STRING_LENGTH 100
@@ -13,14 +14,15 @@ pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static size_t comp_size = ARRAY_LENGTH(components);
 
 void *thread_component(void *arg) {
-    int result;
+    char* result;
     Component *comp = (Component*)arg;
     while (1) {
         pthread_mutex_lock(&mutex);
-        result = comp->fn_int();
+        result = comp->fn();
         sprintf(comp->result, comp->head, result);
         pthread_mutex_unlock(&mutex);
         usleep(comp->time);
+        if (result != NULL) free(result);
     }
     return NULL;
 }
@@ -59,7 +61,7 @@ int main() {
     return 0;
 }
 
-int get_cpu_temperature() {
+char* get_cpu_temperature() {
 //     FILE *thermal_file = fopen("/sys/class/thermal/thermal_zone0/temp", "r");
     FILE *thermal_file = fopen("/sys/devices/platform/coretemp.0/hwmon/hwmon1/temp1_input", "r");
     if (thermal_file == NULL) {
@@ -70,23 +72,30 @@ int get_cpu_temperature() {
     int temperature;
     fscanf(thermal_file, "%d", &temperature);
     fclose(thermal_file);
+    
+    int temp = temperature / 1000;
+   
+    char* str = (char*)malloc(10 * sizeof(char));
+    if (str == NULL) return NULL; 
 
-    return temperature / 1000;
+    sprintf(str, "%d", temp);
+
+    return str;
 }
 
-static int count = 0;
-int test() {
-    return ++count;
-}
-
-int get_cpu_usage() {
+char* get_cpu_usage() {
     struct sysinfo info;
     if(sysinfo(&info) != 0) {
-        return -1;
+        return "";
     }
     
     double total_cpu_time = info.totalram - info.freeram;
     int cpu_usage = (total_cpu_time / info.totalram) * 100;
     
-    return cpu_usage;
+    char* str = (char*)malloc(10 * sizeof(char));
+    if (str == NULL) return NULL; 
+    
+    sprintf(str, "%d", cpu_usage);
+
+    return str;
 }
