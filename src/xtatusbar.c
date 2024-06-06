@@ -9,51 +9,56 @@
 
 #define MAX_STRING_LENGTH 100
 #define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof(arr[0]))
+#define MILISECONDS_TO_MICROSECONDS(ms) ms * 1000
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-static size_t comp_size = ARRAY_LENGTH(components);
+static const size_t COMP_COUNT = ARRAY_LENGTH(components);
 
 void *thread_component(void *arg) {
-    char* result;
-    Component *comp = (Component*)arg;
+    char* fn_result;
+    Component *component = (Component*)arg;
     while (1) {
         pthread_mutex_lock(&mutex);
-        result = comp->fn();
-        sprintf(comp->result, comp->head, result);
+        fn_result = component->fn();
+        component->result = (char*)malloc((strlen(fn_result) + strlen(component->head)) * sizeof(char));
+        sprintf(component->result, component->head, fn_result);
         pthread_mutex_unlock(&mutex);
-        usleep(comp->time);
-        if (result != NULL) free(result);
+        usleep(MILISECONDS_TO_MICROSECONDS(component->time));
+
+        if (fn_result != NULL) free(fn_result);
+        if (component->result != NULL) free(component->result);
     }
     return NULL;
 }
 
-void *thread_principal(void *arg) {
+void *thread_bar(void *arg) {
+    // TODO replace with malloc
     char final_result[MAX_STRING_LENGTH];
     while (1) {
         char final[MAX_STRING_LENGTH] = "";
         pthread_mutex_lock(&mutex);
-        for (int i = 0; i < comp_size; i++) {
+        for (int i = 0; i < COMP_COUNT; i++) {
             strcat(final, components[i].result);
         }
         sprintf(final_result, "%s", final);
         pthread_mutex_unlock(&mutex);
         // TODO call xrootset
         printf("%s\n", final_result);
-        usleep(100000);
+        usleep(MILISECONDS_TO_MICROSECONDS(100));
     }
     return NULL;
 }
 
 int main() {
     pthread_t thread_final;
-    pthread_t threads[comp_size];
+    pthread_t threads[COMP_COUNT];
 
-    for (int i = 0; i < comp_size; i++) {
+    for (int i = 0; i < COMP_COUNT; i++) {
         pthread_create(&threads[i], NULL, thread_component, &components[i]);
     }
-    pthread_create(&thread_final, NULL, thread_principal, NULL);
+    pthread_create(&thread_final, NULL, thread_bar, NULL);
     
-    for (int i = 0; i < comp_size; i++) {
+    for (int i = 0; i < COMP_COUNT; i++) {
         pthread_join(threads[i], NULL);
     }
     pthread_join(thread_final, NULL);

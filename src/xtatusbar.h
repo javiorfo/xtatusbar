@@ -4,7 +4,7 @@ typedef struct {
     char *head;
     int time;
     function fn;
-    char result[10];
+    char *result;
 } Component;
 
 char* get_cpu_temperature();
