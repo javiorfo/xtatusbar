@@ -32,18 +32,15 @@ void *thread_component(void *arg) {
 }
 
 void *thread_bar(void *arg) {
-    // TODO replace with malloc
-    char final_result[MAX_STRING_LENGTH];
     while (1) {
-        char final[MAX_STRING_LENGTH] = "";
+        char final_str[MAX_STRING_LENGTH] = "";
         pthread_mutex_lock(&mutex);
         for (int i = 0; i < COMP_COUNT; i++) {
-            strcat(final, components[i].result);
+            strcat(final_str, components[i].result);
         }
-        sprintf(final_result, "%s", final);
         pthread_mutex_unlock(&mutex);
         // TODO call xrootset
-        printf("%s\n", final_result);
+        printf("%s\n", final_str);
         usleep(MILISECONDS_TO_MICROSECONDS(100));
     }
     return NULL;
@@ -67,8 +64,7 @@ int main() {
 }
 
 char* get_cpu_temperature() {
-//     FILE *thermal_file = fopen("/sys/class/thermal/thermal_zone0/temp", "r");
-    FILE *thermal_file = fopen("/sys/devices/platform/coretemp.0/hwmon/hwmon1/temp1_input", "r");
+    FILE *thermal_file = fopen(TEMPERATURE_FILE, "r");
     if (thermal_file == NULL) {
         perror("Error opening thermal file");
         exit(EXIT_FAILURE);
