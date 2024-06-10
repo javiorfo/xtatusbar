@@ -16,18 +16,23 @@ pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static const size_t COMP_COUNT = ARRAY_LENGTH(components);
 
 void* thread_component(void *arg) {
-    char* fn_result;
     Component* component = (Component*)arg;
+
     while (true) {
         pthread_mutex_lock(&mutex);
-        fn_result = component->fn();
-        component->result = (char*)malloc((strlen(fn_result) + strlen(component->head)) * sizeof(char));
-        sprintf(component->result, component->head, fn_result);
+
+        component->result = component->fn(component->head);
+        if (component->result == NULL) {
+            pthread_mutex_unlock(&mutex);
+            continue;
+        }
+
         pthread_mutex_unlock(&mutex);
+        
         usleep(MILISECONDS_TO_MICROSECONDS(component->time));
 
-        if (fn_result != NULL) free(fn_result);
         if (component->result != NULL) free(component->result);
+        component->result = NULL;
     }
     return NULL;
 }
@@ -35,10 +40,13 @@ void* thread_component(void *arg) {
 void* thread_bar(void *arg) {
     while (true) {
         char final_str[MAX_STRING_LENGTH] = "";
+
         pthread_mutex_lock(&mutex);
+
         for (int i = 0; i < COMP_COUNT; i++) {
             strcat(final_str, components[i].result);
         }
+
         pthread_mutex_unlock(&mutex);
         // TODO call xrootset
         printf("%s\n", final_str);
@@ -64,7 +72,7 @@ int main() {
     return 0;
 }
 
-char* get_cpu_temperature() {
+char* get_cpu_temperature(char* head) {
     FILE* thermal_file = fopen(TEMPERATURE_FILE, "r");
     if (thermal_file == NULL) {
         perror("Error opening thermal file");
@@ -77,27 +85,47 @@ char* get_cpu_temperature() {
     
     short temp = temperature / 1000;
    
-    char* str = (char*)malloc(3 * sizeof(char));
+    char* str = (char*)malloc(20 * sizeof(char));
     if (str == NULL) return NULL; 
 
-    sprintf(str, "%hd", temp);
+    sprintf(str, head, temp);
 
     return str;
 }
 
-char* get_cpu_usage() {
+char* get_cpu_usage(char* head) {
     struct sysinfo info;
     if(sysinfo(&info) != 0) {
-        return "";
+        perror("Error getting sysinfo");
+        exit(EXIT_FAILURE);
     }
     
     double total_cpu_time = info.totalram - info.freeram;
-    short cpu_usage = (total_cpu_time / info.totalram) * 100;
+    short used_cpu = (total_cpu_time / info.totalram) * 100;
     
-    char* str = (char*)malloc(3 * sizeof(char));
+    char* str = (char*)malloc(20 * sizeof(char));
     if (str == NULL) return NULL; 
     
-    sprintf(str, "%hd", cpu_usage);
+    sprintf(str, head, used_cpu);
+
+    return str;
+}
+
+char* get_ram_usage(char* head) {
+    struct sysinfo info;
+    if(sysinfo(&info) != 0) {
+        perror("Error getting sysinfo");
+        exit(EXIT_FAILURE);
+    }
+    unsigned long total_ram = info.totalram * info.mem_unit;
+    unsigned long free_ram = info.freeram * info.mem_unit;
+    unsigned long used_ram = total_ram - free_ram;
+    short used_ram_perc = ((double)used_ram / total_ram) * 100;
+    
+    char* str = (char*)malloc(20 * sizeof(char));
+    if (str == NULL) return NULL; 
+    
+    sprintf(str, head, used_ram_perc);
 
     return str;
 }
