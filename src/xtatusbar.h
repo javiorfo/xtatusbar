@@ -1,10 +1,10 @@
 typedef char* (*function)();
 
 typedef struct {
-    char *head;
+    char* head;
     int time;
     function fn;
-    char *result;
+    char* result;
 } Component;
 
 char* get_cpu_temperature();

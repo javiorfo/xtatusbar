@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <sys/sysinfo.h>
 #include <unistd.h>
 #include <string.h>
@@ -14,10 +15,10 @@
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static const size_t COMP_COUNT = ARRAY_LENGTH(components);
 
-void *thread_component(void *arg) {
+void* thread_component(void *arg) {
     char* fn_result;
-    Component *component = (Component*)arg;
-    while (1) {
+    Component* component = (Component*)arg;
+    while (true) {
         pthread_mutex_lock(&mutex);
         fn_result = component->fn();
         component->result = (char*)malloc((strlen(fn_result) + strlen(component->head)) * sizeof(char));
@@ -31,8 +32,8 @@ void *thread_component(void *arg) {
     return NULL;
 }
 
-void *thread_bar(void *arg) {
-    while (1) {
+void* thread_bar(void *arg) {
+    while (true) {
         char final_str[MAX_STRING_LENGTH] = "";
         pthread_mutex_lock(&mutex);
         for (int i = 0; i < COMP_COUNT; i++) {
@@ -64,7 +65,7 @@ int main() {
 }
 
 char* get_cpu_temperature() {
-    FILE *thermal_file = fopen(TEMPERATURE_FILE, "r");
+    FILE* thermal_file = fopen(TEMPERATURE_FILE, "r");
     if (thermal_file == NULL) {
         perror("Error opening thermal file");
         exit(EXIT_FAILURE);
@@ -74,12 +75,12 @@ char* get_cpu_temperature() {
     fscanf(thermal_file, "%d", &temperature);
     fclose(thermal_file);
     
-    int temp = temperature / 1000;
+    short temp = temperature / 1000;
    
-    char* str = (char*)malloc(10 * sizeof(char));
+    char* str = (char*)malloc(3 * sizeof(char));
     if (str == NULL) return NULL; 
 
-    sprintf(str, "%d", temp);
+    sprintf(str, "%hd", temp);
 
     return str;
 }
@@ -91,12 +92,12 @@ char* get_cpu_usage() {
     }
     
     double total_cpu_time = info.totalram - info.freeram;
-    int cpu_usage = (total_cpu_time / info.totalram) * 100;
+    short cpu_usage = (total_cpu_time / info.totalram) * 100;
     
-    char* str = (char*)malloc(10 * sizeof(char));
+    char* str = (char*)malloc(3 * sizeof(char));
     if (str == NULL) return NULL; 
     
-    sprintf(str, "%d", cpu_usage);
+    sprintf(str, "%hd", cpu_usage);
 
     return str;
 }

@@ -6,7 +6,7 @@ static Component components[] = {
 };
 
 // static const char *TEMPERATURE_FILE = "/sys/class/thermal/thermal_zone0/temp";
-static const char *TEMPERATURE_FILE = "/sys/devices/platform/coretemp.0/hwmon/hwmon1/temp1_input";
-static const char *DATE_FORMAT = "";
+static const char* TEMPERATURE_FILE = "/sys/devices/platform/coretemp.0/hwmon/hwmon1/temp1_input";
+// static const char *DATE_FORMAT = "";
 
 
