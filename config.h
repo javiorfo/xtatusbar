@@ -1,5 +1,8 @@
 #include "xtatusbar.h"
 
+// First element is a string interpolation
+// Second element is the time in miliseconds in which every component will execute the function in the third element
+// Third element is the function to be executed
 static Component components[] = {
     { "  CPU %hd%% | ", 2000, get_cpu_usage },
     { "  RAM %hd%% | ", 2000, get_ram_usage },
