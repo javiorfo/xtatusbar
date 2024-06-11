@@ -57,10 +57,9 @@ void* thread_bar(void *arg) {
 
         pthread_mutex_unlock(&mutex);
 
-        // TODO replace with system()
-//         system(final_str);
-        printf("%s\n", final_str);
-        usleep(MILISECONDS_TO_MICROSECONDS(10));
+        system(final_str);
+//         printf("%s\n", final_str);
+        usleep(MILISECONDS_TO_MICROSECONDS(100));
     }
     return NULL;
 }
@@ -124,7 +123,7 @@ char* get_cpu_temperature(char* head) {
     
     short temp = temperature / 1000;
 
-    return build_result_for_short(head, temp, 2);
+    return build_result_for_short(head, temp, 3);
 }
 
 char* get_cpu_usage(char* head) {
@@ -133,18 +132,39 @@ char* get_cpu_usage(char* head) {
     double total_cpu_time = info.totalram - info.freeram;
     short used_cpu = (total_cpu_time / info.totalram) * 100;
     
-    return build_result_for_short(head, used_cpu, 2);
+    return build_result_for_short(head, used_cpu, 3);
 }
 
 char* get_ram_usage(char* head) {
-    struct sysinfo info = get_sysinfo();
-    
-    unsigned long total_ram = info.totalram * info.mem_unit;
-    unsigned long free_ram = info.freeram * info.mem_unit;
-    unsigned long used_ram = total_ram - free_ram;
-    short used_ram_perc = ((double)used_ram / total_ram) * 100;
-    
-    return build_result_for_short(head, used_ram_perc, 2);
+    FILE *fp;
+    char line[1024];
+    unsigned long total_mem, free_mem, buffers, cached, used_mem;
+    short used_ram_perc;
+
+    fp = fopen("/proc/meminfo", "r");
+    if (fp == NULL) {
+        printf("Failed to open /proc/meminfo\n");
+        exit(EXIT_FAILURE);
+    }
+
+    while (fgets(line, sizeof(line), fp)) {
+        if (sscanf(line, "MemTotal: %lu kB", &total_mem) == 1) {
+            continue;
+        } else if (sscanf(line, "MemFree: %lu kB", &free_mem) == 1) {
+            continue;
+        } else if (sscanf(line, "Buffers: %lu kB", &buffers) == 1) {
+            continue;
+        } else if (sscanf(line, "Cached: %lu kB", &cached) == 1) {
+            break;
+        }
+    }
+
+    fclose(fp);
+
+    used_mem = total_mem - free_mem - buffers - cached;
+
+    used_ram_perc = ((double)used_mem / total_mem) * 100;
+    return build_result_for_short(head, used_ram_perc, 3);
 }
 
 char* get_disk_usage(char* head) {
@@ -172,7 +192,7 @@ char* get_date(char* head) {
     time(&now);
     local = localtime(&now);
 
-    strftime(buffer, 80, "%A %d/%m/%Y %H:%M", local);
+    strftime(buffer, 80, DATE_FORMAT, local);
 
     return build_result_for_string(head, buffer, 20);
 }
@@ -207,4 +227,83 @@ char* network_is_connected(char* head) {
     close(sock);
 
     return build_result_for_string(head, is_connected ? "󰱓 " : "󰅛 ", 3);
+}
+
+char* get_volume(char* head) {
+    char buffer[1024] = {0};
+    FILE *fp;
+
+    fp = popen("pactl get-sink-mute @DEFAULT_SINK@", "r");
+    if (fp == NULL) {
+        perror("popen failed in pactl get-sink-mute");
+        exit(EXIT_FAILURE);
+    }
+
+    if (fgets(buffer, sizeof(buffer), fp) == NULL) {
+        perror("fgets failed");
+        pclose(fp);
+        exit(EXIT_FAILURE);
+    }
+
+    pclose(fp);
+    char muted[] = "";
+    if (sscanf(buffer, "Mute: %s", muted) != 1) {
+        fprintf(stderr, "Failed to parse volume Mute\n");
+        exit(EXIT_FAILURE);
+    }
+
+    bool is_muted = strcmp(muted, "yes") ? true : false;
+
+    if (is_muted) {
+        return build_result_for_string(head, "MUTED", 5);
+    }
+    
+    fp = popen("pactl get-sink-volume @DEFAULT_SINK@", "r");
+    if (fp == NULL) {
+        perror("popen failed");
+        exit(EXIT_FAILURE);
+    }
+
+    if (fgets(buffer, sizeof(buffer), fp) == NULL) {
+        perror("fgets failed");
+        pclose(fp);
+        exit(EXIT_FAILURE);
+    }
+
+    pclose(fp);
+
+    const char *volume_str = strstr(buffer, "Volume:");
+    if (volume_str == NULL) {
+        fprintf(stderr, "Volume information not found in the output\n");
+        exit(EXIT_FAILURE);
+    }
+
+    int percentage = 0;
+    if (sscanf(volume_str, "Volume: %*[^/]/ %d%%", &percentage) != 1) {
+        fprintf(stderr, "Failed to parse volume percentage\n");
+        exit(EXIT_FAILURE);
+    }
+
+    char str[3];
+    sprintf(str, "%hd%%", percentage);
+    return build_result_for_string(head, str, 3);
+}
+
+char* execute_script(char* head) {
+    FILE *fp;
+    char path[1024];
+
+    // TODO in config
+    fp = popen("./script", "r");
+    if (fp == NULL) {
+        printf("Failed to run command\n");
+        exit(EXIT_FAILURE);
+    }
+
+    while (fgets(path, sizeof(path), fp) != NULL) {
+        printf("%s", path);
+    }
+
+    pclose(fp);
+    return build_result_for_string(head, path, strlen(path) + 1);
 }

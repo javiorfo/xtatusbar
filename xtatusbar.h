@@ -17,3 +17,5 @@ char* get_ram_usage(char*);
 char* get_disk_usage(char*);
 char* get_date(char*);
 char* network_is_connected(char*);
+char* get_volume(char*);
+char* execute_script(char*);
