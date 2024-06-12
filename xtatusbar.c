@@ -292,6 +292,29 @@ char* get_volume(char* head) {
     return build_result_for_string(head, str, 3);
 }
 
+char* get_battery_status(char* head) {
+    const int MAX_BUF = 128;
+    FILE *file;
+    char buffer[MAX_BUF];
+    int battery_percentage;
+
+    file = fopen(BATTERY_FILE, "r");
+    if (file == NULL) {
+        perror("Error opening file to get battery info");
+        exit(EXIT_FAILURE);
+    }
+
+    while (fgets(buffer, MAX_BUF, file)) {
+        if (strstr(buffer, "POWER_SUPPLY_CAPACITY=") != NULL) {
+            sscanf(buffer, "POWER_SUPPLY_CAPACITY=%d", &battery_percentage);
+            break;
+        }
+    }
+
+    fclose(file);
+    return build_result_for_short(head, battery_percentage, 3);
+}
+
 char* execute_script(char* head) {
     FILE *fp;
     char path[1024];

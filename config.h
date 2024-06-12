@@ -20,5 +20,8 @@ static const char* TEMPERATURE_FILE = "/sys/devices/platform/coretemp.0/hwmon/hw
 // Date format calendar
 static const char* DATE_FORMAT = "%A %d/%m/%Y %H:%M";
 
+// File where to get battery info
+static const char* BATTERY_FILE = "/sys/class/power_supply/BAT0/uevent";
+
 // Path to a script if execute_script function is used
 static const char* SCRIPT = "./path/to/script";

@@ -3,6 +3,7 @@
 
 ## Caveats
 - Dependencies: `xsetroot`
+- Influenced by suckless software (changes are doing by config.h file and recompilation).
 - This library has been developed on and for Linux following open source philosophy.
 
 ## Installation
@@ -26,14 +27,15 @@ xtatusbar &
 | TEMPERATURE | :heavy_check_mark: | Celcious |
 | DISK USAGE | :heavy_check_mark: | percentage |
 | VOLUME LEVEL | :heavy_check_mark: | Level and Mute status |
-| BATTERY LEVEL | :x: |  |
+| BATTERY LEVEL | :heavy_check_mark: | percentage |
 | WEATHER | :x: | |
 | NETWORK STATUS | :heavy_check_mark: | Up or down |
 | DATE | :heavy_check_mark: | could be custimizable |
 | CUSTOM COMPONENT | :heavy_check_mark: | coding in C |
 
 ## Customizable config.h
-- By default the values by parameters are:
+- Edit [config.h](https://github.com/javiorfo/xtatusbar/blob/master/config.h) to change values or configurations (then recompile)
+- By default the values by parameters are the following:
 ```c
 // First element is a string interpolation
 // Second element is the time in miliseconds in which every component will execute the function in the third element
@@ -46,12 +48,16 @@ static Component components[] = {
     { "󰋊  VOL %s | ", 100, get_volume },
     { "%s NET | ", 5000, network_is_connected },
     { "  %s ", 60000, get_date },
+    // { "  BAT %s%% | ", 5000, get_battery_perc },
     // { "CUSTOM %s ", 1000, execute_script },
 };
 
 // File where to get PC temperature
 // static const char *TEMPERATURE_FILE = "/sys/class/thermal/thermal_zone0/temp";
 static const char* TEMPERATURE_FILE = "/sys/devices/platform/coretemp.0/hwmon/hwmon1/temp1_input";
+
+// File where to get battery info
+static const char* BATTERY_FILE = "/sys/class/power_supply/BAT0/uevent";
 
 // Date format calendar
 static const char* DATE_FORMAT = "%A %d/%m/%Y %H:%M";
