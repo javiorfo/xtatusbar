@@ -296,16 +296,13 @@ char* execute_script(char* head) {
     FILE *fp;
     char path[1024];
 
-    // TODO in config
-    fp = popen("./script", "r");
+    fp = popen(SCRIPT, "r");
     if (fp == NULL) {
         printf("Failed to run command\n");
         exit(EXIT_FAILURE);
     }
 
-    while (fgets(path, sizeof(path), fp) != NULL) {
-        printf("%s", path);
-    }
+    while (fgets(path, sizeof(path), fp) != NULL) {}
 
     pclose(fp);
     return build_result_for_string(head, path, strlen(path) + 1);
