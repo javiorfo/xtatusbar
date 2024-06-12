@@ -1,7 +1,3 @@
-# Version
-VERSION = 0.1.0
-
-# Variables
 CC = gcc
 CFLAGS = -Wall
 TARGET = xtatusbar

@@ -37,8 +37,12 @@ void* thread_component(void *arg) {
         
         usleep(MILISECONDS_TO_MICROSECONDS(component->time));
 
+        pthread_mutex_lock(&mutex);
+
         if (component->result != NULL) free(component->result);
         component->result = NULL;
+
+        pthread_mutex_unlock(&mutex);
     }
     return NULL;
 }
@@ -58,7 +62,6 @@ void* thread_bar(void *arg) {
         pthread_mutex_unlock(&mutex);
 
         system(final_str);
-//         printf("%s\n", final_str);
         usleep(MILISECONDS_TO_MICROSECONDS(100));
     }
     return NULL;
@@ -240,7 +243,7 @@ char* get_volume(char* head) {
     }
 
     if (fgets(buffer, sizeof(buffer), fp) == NULL) {
-        perror("fgets failed");
+        perror("fgets failed in pactl get-sink-mute");
         pclose(fp);
         exit(EXIT_FAILURE);
     }
