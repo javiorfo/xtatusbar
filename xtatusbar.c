@@ -255,7 +255,7 @@ char* get_volume(char* head) {
         exit(EXIT_FAILURE);
     }
 
-    bool is_muted = strcmp(muted, "yes") ? true : false;
+    bool is_muted = strcmp(muted, "yes") == 0 ? true : false;
 
     if (is_muted) {
         return build_result_for_string(head, "MUTED", 5);
