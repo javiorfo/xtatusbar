@@ -48,7 +48,7 @@ static Component components[] = {
     { "󰋊  VOL %s | ", 100, get_volume },
     { "%s NET | ", 5000, network_is_connected },
     { "  %s ", 60000, get_date },
-    // { "  BAT %s%% | ", 5000, get_battery_perc },
+    // { "  BAT %hd%% | ", 5000, get_battery_status },
     // { "CUSTOM %s ", 1000, execute_script },
 };
 

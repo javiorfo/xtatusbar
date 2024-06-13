@@ -8,7 +8,7 @@ static Component components[] = {
     { "  RAM %hd%% | ", 1000, get_ram_usage },
     { "󰏈  TEMP %hd°C | ", 1000, get_cpu_temperature },
     { "󰋊  DISK %hd%% | ", 5000, get_disk_usage },
-    { "󰋊  VOL %s | ", 100, get_volume },
+    { "  VOL %s | ", 100, get_volume },
     { "%s NET | ", 5000, network_is_connected },
     { "  %s ", 60000, get_date },
 };
