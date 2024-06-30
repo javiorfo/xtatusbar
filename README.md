@@ -9,7 +9,7 @@
 ## Installation
 - First step:
 ```bash
-git clone https://github.com/javiorfo/xtatusbar
+git clone https://github.com/chaosystema/xtatusbar
 cd xtatusbar
 sudo make clean install
 ```
@@ -34,7 +34,7 @@ xtatusbar &
 | CUSTOM COMPONENT | :heavy_check_mark: | coding in C |
 
 ## Customizable config.h
-- Edit [config.h](https://github.com/javiorfo/xtatusbar/blob/master/config.h) to change values or configurations (then recompile)
+- Edit [config.h](https://github.com/chaosystema/xtatusbar/blob/master/config.h) to change values or configurations (then recompile)
 - By default the values by parameters are the following:
 ```c
 // First element is a string interpolation
@@ -68,10 +68,9 @@ static const char* SCRIPT = "./path/to/script";
 
 ## Screenshots
 
-<img src="https://github.com/javiorfo/img/blob/master/xtatusbar/xtatusbar.png?raw=true" alt="xtatusbar" />
+<img src="https://github.com/chaosystema/img/blob/master/xtatusbar/xtatusbar.png?raw=true" alt="xtatusbar" />
 
 ---
 
 ### Donate
-- **Bitcoin** [(QR)](https://raw.githubusercontent.com/javiorfo/img/master/crypto/bitcoin.png)  `1GqdJ63RDPE4eJKujHi166FAyigvHu5R7v`
-- [Paypal](https://www.paypal.com/donate/?hosted_button_id=FA7SGLSCT2H8G)
+- **Bitcoin** [(QR)](https://raw.githubusercontent.com/chaosystema/img/master/crypto/bitcoin.png)  `1GqdJ63RDPE4eJKujHi166FAyigvHu5R7v`
