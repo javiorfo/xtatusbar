@@ -39,8 +39,10 @@ void* thread_component(void *arg) {
 
         pthread_mutex_lock(&mutex);
 
-        if (component->result != NULL) free(component->result);
-        component->result = NULL;
+        if (component->result != NULL) {
+            free(component->result);
+            component->result = NULL;
+        }
 
         pthread_mutex_unlock(&mutex);
     }
