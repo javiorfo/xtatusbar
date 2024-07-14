@@ -86,15 +86,6 @@ int main() {
     return 0;
 }
 
-struct sysinfo get_sysinfo() {
-    struct sysinfo info;
-    if(sysinfo(&info) != 0) {
-        perror("Error getting sysinfo");
-        exit(EXIT_FAILURE);
-    }
-    return info;
-}
-
 char* build_result_for_short(char* head, short value, short size) {
     int final_size = strlen(head) + size;
     char* str = (char*)malloc(final_size * sizeof(char));
@@ -119,7 +110,7 @@ char* get_cpu_temperature(char* head) {
     FILE* thermal_file = fopen(TEMPERATURE_FILE, "r");
     if (thermal_file == NULL) {
         perror("Error opening thermal file");
-        exit(EXIT_FAILURE);
+        return build_result_for_string("TEMP s%", "-", 1);
     }
 
     int temperature;
@@ -132,8 +123,12 @@ char* get_cpu_temperature(char* head) {
 }
 
 char* get_cpu_usage(char* head) {
-    struct sysinfo info = get_sysinfo();
-    
+    struct sysinfo info;
+    if(sysinfo(&info) != 0) {
+        perror("Error getting sysinfo");
+        return build_result_for_string("CPU s%", "-", 1);
+    }
+
     double total_cpu_time = info.totalram - info.freeram;
     short used_cpu = (total_cpu_time / info.totalram) * 100;
     
@@ -149,7 +144,7 @@ char* get_ram_usage(char* head) {
     fp = fopen("/proc/meminfo", "r");
     if (fp == NULL) {
         printf("Failed to open /proc/meminfo\n");
-        exit(EXIT_FAILURE);
+        return build_result_for_string("RAM s%", "-", 1);
     }
 
     while (fgets(line, sizeof(line), fp)) {
@@ -177,7 +172,7 @@ char* get_disk_usage(char* head) {
 
     if (statvfs("/", &stat) != 0) {
         perror("Error with statvfs");
-        exit(EXIT_FAILURE);
+        return build_result_for_string("DISK s%", "-", 1);
     }
 
     unsigned long total_blocks = stat.f_blocks;
@@ -241,20 +236,20 @@ char* get_volume(char* head) {
     fp = popen("pactl get-sink-mute @DEFAULT_SINK@", "r");
     if (fp == NULL) {
         perror("popen failed in pactl get-sink-mute");
-        exit(EXIT_FAILURE);
+        return build_result_for_string(head, "-", 1);
     }
 
     if (fgets(buffer, sizeof(buffer), fp) == NULL) {
         perror("fgets failed in pactl get-sink-mute");
         pclose(fp);
-        exit(EXIT_FAILURE);
+        return build_result_for_string(head, "-", 1);
     }
 
     pclose(fp);
     char muted[] = "";
     if (sscanf(buffer, "Mute: %s", muted) != 1) {
         fprintf(stderr, "Failed to parse volume Mute\n");
-        exit(EXIT_FAILURE);
+        return build_result_for_string(head, "-", 1);
     }
 
     bool is_muted = strcmp(muted, "yes") == 0 ? true : false;
@@ -266,13 +261,13 @@ char* get_volume(char* head) {
     fp = popen("pactl get-sink-volume @DEFAULT_SINK@", "r");
     if (fp == NULL) {
         perror("popen failed");
-        exit(EXIT_FAILURE);
+        return build_result_for_string(head, "-", 1);
     }
 
     if (fgets(buffer, sizeof(buffer), fp) == NULL) {
         perror("fgets failed");
         pclose(fp);
-        exit(EXIT_FAILURE);
+        return build_result_for_string(head, "-", 1);
     }
 
     pclose(fp);
@@ -280,13 +275,13 @@ char* get_volume(char* head) {
     const char *volume_str = strstr(buffer, "Volume:");
     if (volume_str == NULL) {
         fprintf(stderr, "Volume information not found in the output\n");
-        exit(EXIT_FAILURE);
+        return build_result_for_string(head, "-", 1);
     }
 
     int percentage = 0;
     if (sscanf(volume_str, "Volume: %*[^/]/ %d%%", &percentage) != 1) {
         fprintf(stderr, "Failed to parse volume percentage\n");
-        exit(EXIT_FAILURE);
+        return build_result_for_string(head, "-", 1);
     }
 
     char str[3];
@@ -303,7 +298,7 @@ char* get_battery_status(char* head) {
     file = fopen(BATTERY_FILE, "r");
     if (file == NULL) {
         perror("Error opening file to get battery info");
-        exit(EXIT_FAILURE);
+        return build_result_for_string(head, "-", 1);
     }
 
     while (fgets(buffer, MAX_BUF, file)) {
@@ -324,7 +319,7 @@ char* execute_script(char* head) {
     fp = popen(SCRIPT, "r");
     if (fp == NULL) {
         printf("Failed to run command\n");
-        exit(EXIT_FAILURE);
+        return build_result_for_string(head, "-", 1);
     }
 
     while (fgets(path, sizeof(path), fp) != NULL) {}
