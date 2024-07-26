@@ -198,33 +198,21 @@ char* get_date(char* head) {
 }
 
 char* network_is_connected(char* head) {
-    struct sockaddr_in server;
-    struct hostent *host;
-    int sock;
+    struct addrinfo hints, *res;
+    int status;
+    char hostname[] = "www.google.com";
     bool is_connected = true;
 
-    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        perror("Socket creation error");
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+
+    status = getaddrinfo(hostname, NULL, &hints, &res);
+    if (status != 0 || res == NULL) {
         is_connected = false;
     }
 
-    if ((host = gethostbyname("www.google.com")) == NULL) {
-        perror("Host resolution error");
-        close(sock);
-        is_connected = false;
-    }
-
-    server.sin_family = AF_INET;
-    server.sin_port = htons(80);
-    memcpy(&server.sin_addr.s_addr, host->h_addr, host->h_length);
-
-    if (connect(sock, (struct sockaddr *)&server, sizeof(server)) < 0) {
-        perror("Connection error");
-        close(sock);
-        is_connected = false;
-    }
-
-    close(sock);
+    freeaddrinfo(res); 
 
     return build_result_for_string(head, is_connected ? "󰱓 " : "󰅛 ", 3);
 }
