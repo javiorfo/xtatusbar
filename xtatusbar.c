@@ -1,17 +1,14 @@
 #include <stdio.h>
-#include <alsa/asoundlib.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <sys/sysinfo.h>
 #include <sys/statvfs.h>
-#include <unistd.h>
 #include <string.h>
 #include <time.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <netdb.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
 #include "config.h"
 
 #define STATUSBAR_MAX_STRING_LENGTH 200
@@ -198,21 +195,28 @@ char* get_date(char* head) {
 }
 
 char* network_is_connected(char* head) {
-    struct addrinfo hints, *res;
-    int status;
-    char hostname[] = "www.google.com";
-    bool is_connected = true;
+    int fd;
+    struct ifreq ifr;
+    bool is_connected = false;
 
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-
-    status = getaddrinfo(hostname, NULL, &hints, &res);
-    if (status != 0 || res == NULL) {
-        is_connected = false;
+    fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd < 0) {
+        perror("socket");
+        return build_result_for_string(head, "-", 1);
     }
 
-    freeaddrinfo(res); 
+    memset(&ifr, 0, sizeof(ifr));
+    strncpy(ifr.ifr_name, NETWORK_INTERFACE_NAME, IFNAMSIZ - 1);
+
+    if (ioctl(fd, SIOCGIFFLAGS, &ifr) < 0) {
+        perror("ioctl");
+        close(fd);
+        return build_result_for_string(head, "-", 1);
+    }
+
+    if (ifr.ifr_flags & IFF_UP) is_connected = true;
+
+    close(fd);
 
     return build_result_for_string(head, is_connected ? "󰱓 " : "󰅛 ", 3);
 }

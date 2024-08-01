@@ -25,3 +25,6 @@ static const char* BATTERY_FILE = "/sys/class/power_supply/BAT0/uevent";
 
 // Path to a script if execute_script function is used
 static const char* SCRIPT = "./path/to/script";
+
+// Network interface name
+static const char* NETWORK_INTERFACE_NAME = "enp2s0";

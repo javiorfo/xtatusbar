@@ -64,6 +64,9 @@ static const char* DATE_FORMAT = "%A %d/%m/%Y %H:%M";
 
 // Path to a script if execute_script function is used
 static const char* SCRIPT = "./path/to/script";
+
+// Network interface name
+static const char* NETWORK_INTERFACE_NAME = "enp2s0";
 ```
 
 ## Screenshots
