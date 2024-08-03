@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
+#include <alsa/asoundlib.h>
 #include "config.h"
 
 #define STATUSBAR_MAX_STRING_LENGTH 200
@@ -222,59 +223,34 @@ char* network_is_connected(char* head) {
 }
 
 char* get_volume(char* head) {
-    char buffer[1024] = {0};
-    FILE *fp;
+    long min, max, volume;
+    snd_mixer_t *handle;
+    snd_mixer_selem_id_t *sid;
+    const char *card = "default";
+    const char *selem_name = "Master";
 
-    fp = popen("pactl get-sink-mute @DEFAULT_SINK@", "r");
-    if (fp == NULL) {
-        perror("popen failed in pactl get-sink-mute");
-        return build_result_for_string(head, "-", 1);
-    }
+    snd_mixer_open(&handle, 0);
+    snd_mixer_attach(handle, card);
+    snd_mixer_selem_register(handle, NULL, NULL);
+    snd_mixer_load(handle);
 
-    if (fgets(buffer, sizeof(buffer), fp) == NULL) {
-        perror("fgets failed in pactl get-sink-mute");
-        pclose(fp);
-        return build_result_for_string(head, "-", 1);
-    }
+    snd_mixer_selem_id_alloca(&sid);
+    snd_mixer_selem_id_set_index(sid, 0);
+    snd_mixer_selem_id_set_name(sid, selem_name);
+    snd_mixer_elem_t* elem = snd_mixer_find_selem(handle, sid);
 
-    pclose(fp);
-    char muted[] = "";
-    if (sscanf(buffer, "Mute: %s", muted) != 1) {
-        fprintf(stderr, "Failed to parse volume Mute\n");
-        return build_result_for_string(head, "-", 1);
-    }
+    int muted; 
+    snd_mixer_selem_get_playback_switch(elem, SND_MIXER_SCHN_MONO, &muted);
 
-    bool is_muted = strcmp(muted, "yes") == 0 ? true : false;
-
-    if (is_muted) {
+    if (muted == 0) {
         return build_result_for_string(head, "MUTED", 5);
     }
-    
-    fp = popen("pactl get-sink-volume @DEFAULT_SINK@", "r");
-    if (fp == NULL) {
-        perror("popen failed");
-        return build_result_for_string(head, "-", 1);
-    }
 
-    if (fgets(buffer, sizeof(buffer), fp) == NULL) {
-        perror("fgets failed");
-        pclose(fp);
-        return build_result_for_string(head, "-", 1);
-    }
+    snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
+    snd_mixer_selem_get_playback_volume(elem, SND_MIXER_SCHN_MONO, &volume);
+    snd_mixer_close(handle);
 
-    pclose(fp);
-
-    const char *volume_str = strstr(buffer, "Volume:");
-    if (volume_str == NULL) {
-        fprintf(stderr, "Volume information not found in the output\n");
-        return build_result_for_string(head, "-", 1);
-    }
-
-    int percentage = 0;
-    if (sscanf(volume_str, "Volume: %*[^/]/ %d%%", &percentage) != 1) {
-        fprintf(stderr, "Failed to parse volume percentage\n");
-        return build_result_for_string(head, "-", 1);
-    }
+    int percentage = (int)((volume - min) * 100 / (max - min));
 
     char str[3];
     sprintf(str, "%hd%%", percentage);
