@@ -10,6 +10,7 @@
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <alsa/asoundlib.h>
+#include <curl/curl.h>
 #include "config.h"
 
 #define STATUSBAR_MAX_STRING_LENGTH 200
@@ -19,7 +20,7 @@
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static const size_t COMP_COUNT = ARRAY_LENGTH(components);
 
-void* thread_component(void *arg) {
+void* thread_component(void* arg) {
     Component* component = (Component*)arg;
 
     while (true) {
@@ -47,7 +48,7 @@ void* thread_component(void *arg) {
     return NULL;
 }
 
-void* thread_bar(void *arg) {
+void* thread_bar(void* arg) {
     while (true) {
         char final_str[STATUSBAR_MAX_STRING_LENGTH] = "xsetroot -name \"";
 
@@ -196,30 +197,26 @@ char* get_date(char* head) {
 }
 
 char* network_is_connected(char* head) {
-    int fd;
-    struct ifreq ifr;
-    bool is_connected = false;
+    char* status;
+    CURL *curl;
+    CURLcode res;
 
-    fd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (fd < 0) {
-        perror("socket");
-        return build_result_for_string(head, "-", 1);
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+    curl = curl_easy_init();
+
+    if(curl) {
+        curl_easy_setopt(curl, CURLOPT_URL, "http://www.google.com");
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 4L); // 4 seconds timeout
+        curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
+
+        res = curl_easy_perform(curl);
+        status = res == CURLE_OK ? "󰱓 " : "󰅛 ";
+        curl_easy_cleanup(curl);
     }
 
-    memset(&ifr, 0, sizeof(ifr));
-    strncpy(ifr.ifr_name, NETWORK_INTERFACE_NAME, IFNAMSIZ - 1);
-
-    if (ioctl(fd, SIOCGIFFLAGS, &ifr) < 0) {
-        perror("ioctl");
-        close(fd);
-        return build_result_for_string(head, "-", 1);
-    }
-
-    if (ifr.ifr_flags & IFF_UP) is_connected = true;
-
-    close(fd);
-
-    return build_result_for_string(head, is_connected ? "󰱓 " : "󰅛 ", 3);
+    curl_global_cleanup();
+    
+    return build_result_for_string(head, status, 3);
 }
 
 char* get_volume(char* head) {

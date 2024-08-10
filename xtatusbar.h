@@ -17,6 +17,7 @@ char* get_ram_usage(char*);
 char* get_disk_usage(char*);
 char* get_date(char*);
 char* network_is_connected(char*);
+char* curli(char*);
 char* get_volume(char*);
 char* get_battery_status(char*);
 char* execute_script(char*);

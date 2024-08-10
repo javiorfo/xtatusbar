@@ -2,7 +2,7 @@
 *Configurable statusbar for Xorg server using xsetroot*
 
 ## Caveats
-- Dependencies: `xsetroot`
+- Dependencies: `xsetroot`, `asoundlib` and `libcurl`
 - Influenced by suckless software (changes are doing by config.h file and recompilation).
 - This library has been developed on and for Linux following open source philosophy.
 
@@ -29,7 +29,7 @@ xtatusbar &
 | VOLUME LEVEL | :heavy_check_mark: | Level and Mute status |
 | BATTERY LEVEL | :heavy_check_mark: | percentage |
 | WEATHER | :x: | |
-| NETWORK STATUS | :heavy_check_mark: | Up or down |
+| NETWORK STATUS | :heavy_check_mark: | Receive and send packages |
 | DATE | :heavy_check_mark: | could be custimizable |
 | CUSTOM COMPONENT | :heavy_check_mark: | coding in C |
 
@@ -65,8 +65,6 @@ static const char* DATE_FORMAT = "%A %d/%m/%Y %H:%M";
 // Path to a script if execute_script function is used
 static const char* SCRIPT = "./path/to/script";
 
-// Network interface name
-static const char* NETWORK_INTERFACE_NAME = "enp2s0";
 ```
 
 ## Screenshots
