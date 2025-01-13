@@ -1,6 +1,9 @@
 # xtatusbar
 *Configurable statusbar for Xorg server using xsetroot*
 
+# ⚠️ Attention
+## This project is no longer maintained in favor of [ztatusbar](https://github.com/javiorfo/ztatusbar)
+
 ## Caveats
 - Dependencies: `xsetroot`, `asoundlib` and `libcurl`
 - Influenced by suckless software (changes are doing by config.h file and recompilation).
