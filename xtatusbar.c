@@ -1,294 +1,271 @@
-#include <stdio.h>
-#include <pthread.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <sys/sysinfo.h>
-#include <sys/statvfs.h>
-#include <string.h>
-#include <time.h>
-#include <unistd.h>
-#include <sys/ioctl.h>
-#include <net/if.h>
+#include "config.h"
 #include <alsa/asoundlib.h>
 #include <curl/curl.h>
-#include "config.h"
+#include <net/if.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/statvfs.h>
+#include <sys/sysinfo.h>
+#include <time.h>
+#include <unistd.h>
 
 #define STATUSBAR_MAX_STRING_LENGTH 200
 #define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof(arr[0]));
 #define MILISECONDS_TO_MICROSECONDS(ms) ms * 1000
+#define BUFFER(str, plus) strlen(str) + plus
 
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static const size_t COMP_COUNT = ARRAY_LENGTH(components);
 
-void* thread_component(void* arg) {
-    Component* component = (Component*)arg;
+bool must_generate(Component *c) {
+    struct timeval current_time;
+    gettimeofday(&current_time, NULL);
 
-    while (true) {
-        pthread_mutex_lock(&mutex);
-
-        component->result = component->fn(component->head);
-        if (component->result == NULL) {
-            pthread_mutex_unlock(&mutex);
-            continue;
-        }
-
-        pthread_mutex_unlock(&mutex);
-        
-        usleep(MILISECONDS_TO_MICROSECONDS(component->time));
-
-        pthread_mutex_lock(&mutex);
-
-        if (component->result != NULL) {
-            free(component->result);
-            component->result = NULL;
-        }
-
-        pthread_mutex_unlock(&mutex);
+    if (!c->result) {
+        c->last_time = current_time;
+        return true;
     }
-    return NULL;
+
+    uint64_t elapsed_ms =
+        ((current_time.tv_sec - c->last_time.tv_sec) * 1000) +
+        ((current_time.tv_usec - c->last_time.tv_usec) / 1000);
+
+    if (elapsed_ms >= c->wait_ms) {
+        c->last_time = current_time;
+        return true;
+    }
+
+    return false;
 }
 
-void* thread_bar(void* arg) {
-    while (true) {
-        char final_str[STATUSBAR_MAX_STRING_LENGTH] = "xsetroot -name \"";
-
-        pthread_mutex_lock(&mutex);
-
-        for (int i = 0; i < COMP_COUNT; i++) {
-            if (components[i].result != NULL)
-                strcat(final_str, components[i].result);
+void disk(Component *c) {
+    if (!c->result && !(c->result = malloc(strlen(c->pattern) + 2))) {
+        c->result = "-";
+    } else if (must_generate(c)) {
+        struct statvfs stat;
+        if (statvfs("/", &stat) != 0) {
+            perror("Error with statvfs");
+            c->result = "-";
+            return;
         }
-        strcat(final_str, "\"");
 
-        pthread_mutex_unlock(&mutex);
+        unsigned long total_blocks = stat.f_blocks;
+        unsigned long free_blocks = stat.f_bfree;
+        unsigned long used_blocks = total_blocks - free_blocks;
 
-        system(final_str);
-        usleep(MILISECONDS_TO_MICROSECONDS(100));
+        short used_disk_perc = (double)used_blocks / total_blocks * 100;
+
+        sprintf(c->result, c->pattern, used_disk_perc);
     }
-    return NULL;
+}
+
+void date(Component *c) {
+    if (!c->result && !(c->result = malloc(strlen(c->pattern) + 50))) {
+        c->result = "-";
+    } else if (must_generate(c)) {
+        time_t now;
+        struct tm *local;
+
+        time(&now);
+        local = localtime(&now);
+
+        strftime(c->result, 80, DATE_FORMAT, local);
+    }
+}
+
+void ram(Component *c) {
+    if (!c->result && !(c->result = malloc(strlen(c->pattern) + 2))) {
+        c->result = "-";
+    } else if (must_generate(c)) {
+        FILE *fp;
+        char line[1024];
+        unsigned long total_mem, free_mem, buffers, cached, used_mem;
+        short used_ram_perc;
+
+        fp = fopen("/proc/meminfo", "r");
+        if (fp == NULL) {
+            perror("Failed to open /proc/meminfo\n");
+            c->result = "-";
+            return;
+        }
+
+        while (fgets(line, sizeof(line), fp)) {
+            if (sscanf(line, "MemTotal: %lu kB", &total_mem) == 1) {
+                continue;
+            } else if (sscanf(line, "MemFree: %lu kB", &free_mem) == 1) {
+                continue;
+            } else if (sscanf(line, "Buffers: %lu kB", &buffers) == 1) {
+                continue;
+            } else if (sscanf(line, "Cached: %lu kB", &cached) == 1) {
+                break;
+            }
+        }
+
+        fclose(fp);
+
+        used_mem = total_mem - free_mem - buffers - cached;
+
+        used_ram_perc = ((double)used_mem / total_mem) * 100;
+
+        sprintf(c->result, c->pattern, used_ram_perc);
+    }
+}
+
+void network(Component *c) {
+    if (!c->result && !(c->result = malloc(strlen(c->pattern) + 2))) {
+        c->result = "-";
+    } else if (must_generate(c)) {
+        int status = system("ping -c 1 -q 8.8.8.8 > /dev/null 2>&1");
+        sprintf(c->result, c->pattern, (status == 0 ? "󰱓 " : "󰅛 "));
+    }
+}
+
+void temperature(Component *c) {
+    if (!c->result && !(c->result = malloc(strlen(c->pattern) + 2))) {
+        c->result = "-";
+    } else if (must_generate(c)) {
+        FILE *thermal_file = fopen(TEMPERATURE_FILE, "r");
+        if (thermal_file == NULL) {
+            perror("Error opening thermal file");
+            c->result = "-";
+            return;
+        }
+
+        int temperature;
+        fscanf(thermal_file, "%d", &temperature);
+        fclose(thermal_file);
+
+        short temp = temperature / 1000;
+
+        sprintf(c->result, c->pattern, temp);
+    }
+}
+
+void cpu(Component *c) {
+    if (!c->result && !(c->result = malloc(strlen(c->pattern) + 2))) {
+        c->result = "-";
+    } else if (must_generate(c)) {
+        struct sysinfo info;
+        if (sysinfo(&info) != 0) {
+            perror("Error getting sysinfo");
+            c->result = "-";
+            return;
+        }
+
+        double total_cpu_time = info.totalram - info.freeram;
+        short used_cpu = (total_cpu_time / info.totalram) * 100;
+
+        sprintf(c->result, c->pattern, used_cpu);
+    }
+}
+
+void volume(Component *c) {
+    if (!c->result && !(c->result = malloc(strlen(c->pattern) + 5))) {
+        c->result = "-";
+    } else if (must_generate(c)) {
+        long min, max, volume;
+        snd_mixer_t *handle;
+        snd_mixer_selem_id_t *sid;
+        const char *card = "default";
+        const char *selem_name = "Master";
+
+        snd_mixer_open(&handle, 0);
+        snd_mixer_attach(handle, card);
+        snd_mixer_selem_register(handle, NULL, NULL);
+        snd_mixer_load(handle);
+
+        snd_mixer_selem_id_alloca(&sid);
+        snd_mixer_selem_id_set_index(sid, 0);
+        snd_mixer_selem_id_set_name(sid, selem_name);
+        snd_mixer_elem_t *elem = snd_mixer_find_selem(handle, sid);
+
+        int muted;
+        snd_mixer_selem_get_playback_switch(elem, SND_MIXER_SCHN_MONO, &muted);
+
+        if (muted == 0) {
+            sprintf(c->result, c->pattern, "MUTED");
+        } else {
+            snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
+            snd_mixer_selem_get_playback_volume(elem, SND_MIXER_SCHN_MONO,
+                                                &volume);
+            snd_mixer_close(handle);
+
+            int percentage = (int)((volume - min) * 100 / (max - min));
+
+            char str[3];
+            sprintf(str, "%hd%%", percentage);
+
+            sprintf(c->result, c->pattern, str);
+        }
+    }
+}
+
+void battery(Component *c) {
+    if (!c->result && !(c->result = malloc(strlen(c->pattern) + 5))) {
+        c->result = "-";
+    } else if (must_generate(c)) {
+        const int MAX_BUF = 128;
+        FILE *file;
+        char buffer[MAX_BUF];
+        int battery_percentage;
+
+        file = fopen(BATTERY_FILE, "r");
+        if (file == NULL) {
+            perror("Error opening file to get battery info");
+            c->result = "-";
+            return;
+        }
+
+        while (fgets(buffer, MAX_BUF, file)) {
+            if (strstr(buffer, "POWER_SUPPLY_CAPACITY=") != NULL) {
+                sscanf(buffer, "POWER_SUPPLY_CAPACITY=%d", &battery_percentage);
+                break;
+            }
+        }
+
+        fclose(file);
+
+        sprintf(c->result, c->pattern, battery_percentage);
+    }
+}
+
+void script(Component *c) {
+    if (!c->result && !(c->result = malloc(strlen(c->pattern) + 80))) {
+        c->result = "-";
+    } else if (must_generate(c)) {
+        FILE *fp;
+        char path[80];
+
+        fp = popen(SCRIPT, "r");
+        if (fp == NULL) {
+            perror("Failed to run command\n");
+            c->result = "-";
+            return;
+        }
+
+        while (fgets(path, sizeof(path), fp) != NULL) {}
+
+        pclose(fp);
+
+        sprintf(c->result, c->pattern, path);
+    }
 }
 
 int main() {
-    pthread_t thread_final;
-    pthread_t threads[COMP_COUNT];
+    while (true) {
+        char final_str[200] = "xsetroot -name \"";
+        for (int i = 0; i < COMP_COUNT; i++) {
+            Component *c = components + i;
+            c->fn(c);
+            strcat(final_str, c->result);
+        }
+        strcat(final_str, "\"");
 
-    for (int i = 0; i < COMP_COUNT; i++) {
-        pthread_create(&threads[i], NULL, thread_component, &components[i]);
+        system(final_str);
+        usleep(100000);
     }
-    pthread_create(&thread_final, NULL, thread_bar, NULL);
-    
-    for (int i = 0; i < COMP_COUNT; i++) {
-        pthread_join(threads[i], NULL);
-    }
-    pthread_join(thread_final, NULL);
 
     return 0;
-}
-
-char* build_result_for_short(char* head, short value, short size) {
-    int final_size = strlen(head) + size;
-    char* str = (char*)malloc(final_size * sizeof(char));
-    if (str == NULL) return NULL; 
-
-    sprintf(str, head, value);
-
-    return str;
-}
-
-char* build_result_for_string(char* head, char* value, short size) {
-    int final_size = strlen(head) + size;
-    char* str = (char*)malloc(final_size * sizeof(char));
-    if (str == NULL) return NULL; 
-
-    sprintf(str, head, value);
-
-    return str;
-}
-
-char* get_cpu_temperature(char* head) {
-    FILE* thermal_file = fopen(TEMPERATURE_FILE, "r");
-    if (thermal_file == NULL) {
-        perror("Error opening thermal file");
-        return build_result_for_string("TEMP s%", "-", 1);
-    }
-
-    int temperature;
-    fscanf(thermal_file, "%d", &temperature);
-    fclose(thermal_file);
-    
-    short temp = temperature / 1000;
-
-    return build_result_for_short(head, temp, 3);
-}
-
-char* get_cpu_usage(char* head) {
-    struct sysinfo info;
-    if(sysinfo(&info) != 0) {
-        perror("Error getting sysinfo");
-        return build_result_for_string("CPU s%", "-", 1);
-    }
-
-    double total_cpu_time = info.totalram - info.freeram;
-    short used_cpu = (total_cpu_time / info.totalram) * 100;
-    
-    return build_result_for_short(head, used_cpu, 3);
-}
-
-char* get_ram_usage(char* head) {
-    FILE *fp;
-    char line[1024];
-    unsigned long total_mem, free_mem, buffers, cached, used_mem;
-    short used_ram_perc;
-
-    fp = fopen("/proc/meminfo", "r");
-    if (fp == NULL) {
-        printf("Failed to open /proc/meminfo\n");
-        return build_result_for_string("RAM s%", "-", 1);
-    }
-
-    while (fgets(line, sizeof(line), fp)) {
-        if (sscanf(line, "MemTotal: %lu kB", &total_mem) == 1) {
-            continue;
-        } else if (sscanf(line, "MemFree: %lu kB", &free_mem) == 1) {
-            continue;
-        } else if (sscanf(line, "Buffers: %lu kB", &buffers) == 1) {
-            continue;
-        } else if (sscanf(line, "Cached: %lu kB", &cached) == 1) {
-            break;
-        }
-    }
-
-    fclose(fp);
-
-    used_mem = total_mem - free_mem - buffers - cached;
-
-    used_ram_perc = ((double)used_mem / total_mem) * 100;
-    return build_result_for_short(head, used_ram_perc, 3);
-}
-
-char* get_disk_usage(char* head) {
-    struct statvfs stat;
-
-    if (statvfs("/", &stat) != 0) {
-        perror("Error with statvfs");
-        return build_result_for_string("DISK s%", "-", 1);
-    }
-
-    unsigned long total_blocks = stat.f_blocks;
-    unsigned long free_blocks = stat.f_bfree;
-    unsigned long used_blocks = total_blocks - free_blocks;
-
-    short used_disk_perc = (double) used_blocks / total_blocks * 100;
-    
-    return build_result_for_short(head, used_disk_perc, 2);
-}
-
-char* get_date(char* head) {
-    time_t now;
-    struct tm *local;
-    char buffer[80];
-
-    time(&now);
-    local = localtime(&now);
-
-    strftime(buffer, 80, DATE_FORMAT, local);
-
-    return build_result_for_string(head, buffer, 20);
-}
-
-char* network_is_connected(char* head) {
-    char* status;
-    CURL *curl;
-    CURLcode res;
-
-    curl_global_init(CURL_GLOBAL_DEFAULT);
-    curl = curl_easy_init();
-
-    if(curl) {
-        curl_easy_setopt(curl, CURLOPT_URL, "http://www.google.com");
-        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 4L); // 4 seconds timeout
-        curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
-
-        res = curl_easy_perform(curl);
-        status = res == CURLE_OK ? "󰱓 " : "󰅛 ";
-        curl_easy_cleanup(curl);
-    }
-
-    curl_global_cleanup();
-    
-    return build_result_for_string(head, status, 3);
-}
-
-char* get_volume(char* head) {
-    long min, max, volume;
-    snd_mixer_t *handle;
-    snd_mixer_selem_id_t *sid;
-    const char *card = "default";
-    const char *selem_name = "Master";
-
-    snd_mixer_open(&handle, 0);
-    snd_mixer_attach(handle, card);
-    snd_mixer_selem_register(handle, NULL, NULL);
-    snd_mixer_load(handle);
-
-    snd_mixer_selem_id_alloca(&sid);
-    snd_mixer_selem_id_set_index(sid, 0);
-    snd_mixer_selem_id_set_name(sid, selem_name);
-    snd_mixer_elem_t* elem = snd_mixer_find_selem(handle, sid);
-
-    int muted; 
-    snd_mixer_selem_get_playback_switch(elem, SND_MIXER_SCHN_MONO, &muted);
-
-    if (muted == 0) {
-        return build_result_for_string(head, "MUTED", 5);
-    }
-
-    snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
-    snd_mixer_selem_get_playback_volume(elem, SND_MIXER_SCHN_MONO, &volume);
-    snd_mixer_close(handle);
-
-    int percentage = (int)((volume - min) * 100 / (max - min));
-
-    char str[3];
-    sprintf(str, "%hd%%", percentage);
-    return build_result_for_string(head, str, 3);
-}
-
-char* get_battery_status(char* head) {
-    const int MAX_BUF = 128;
-    FILE *file;
-    char buffer[MAX_BUF];
-    int battery_percentage;
-
-    file = fopen(BATTERY_FILE, "r");
-    if (file == NULL) {
-        perror("Error opening file to get battery info");
-        return build_result_for_string(head, "-", 1);
-    }
-
-    while (fgets(buffer, MAX_BUF, file)) {
-        if (strstr(buffer, "POWER_SUPPLY_CAPACITY=") != NULL) {
-            sscanf(buffer, "POWER_SUPPLY_CAPACITY=%d", &battery_percentage);
-            break;
-        }
-    }
-
-    fclose(file);
-    return build_result_for_short(head, battery_percentage, 3);
-}
-
-char* execute_script(char* head) {
-    FILE *fp;
-    char path[1024];
-
-    fp = popen(SCRIPT, "r");
-    if (fp == NULL) {
-        printf("Failed to run command\n");
-        return build_result_for_string(head, "-", 1);
-    }
-
-    while (fgets(path, sizeof(path), fp) != NULL) {}
-
-    pclose(fp);
-    return build_result_for_string(head, path, strlen(path) + 1);
 }

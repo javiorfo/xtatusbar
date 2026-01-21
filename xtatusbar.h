@@ -1,23 +1,25 @@
-typedef char* (*function)(char*);
+#include <sys/time.h>
+#include <stdint.h>
+#include <stdbool.h>
 
-typedef struct {
-    char* head;
-    int time;
+struct Component;
+typedef void (*function)(struct Component *c);
+
+typedef struct Component {
+    char *pattern;
+    uint64_t wait_ms;
     function fn;
-    char* result;
+    char *result;
+    struct timeval last_time;
 } Component;
 
-struct sysinfo get_sysinfo();
-char* build_result_for_short(char*, short, short);
-char* build_result_for_string(char*, char*, short);
-
-char* get_cpu_temperature(char*);
-char* get_cpu_usage(char*);
-char* get_ram_usage(char*);
-char* get_disk_usage(char*);
-char* get_date(char*);
-char* network_is_connected(char*);
-char* curli(char*);
-char* get_volume(char*);
-char* get_battery_status(char*);
-char* execute_script(char*);
+void temperature(Component*);
+void cpu(Component*);
+void ram(Component*);
+void disk(Component*);
+void date(Component*);
+void network(Component*);
+void volume(Component*);
+void battery(Component*);
+void execute(Component*);
+bool must_generate(Component *c);

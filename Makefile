@@ -3,7 +3,7 @@ CFLAGS = -Wall
 TARGET = xtatusbar
 SRC = xtatusbar.c
 DESTDIR = /usr/local/bin
-LIBS = -lasound -lcurl
+LIBS = -lasound
 
 all: $(TARGET)
 
