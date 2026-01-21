@@ -1,6 +1,5 @@
 #include "config.h"
 #include <alsa/asoundlib.h>
-#include <curl/curl.h>
 #include <net/if.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -15,7 +14,6 @@
 #define STATUSBAR_MAX_STRING_LENGTH 200
 #define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof(arr[0]));
 #define MILISECONDS_TO_MICROSECONDS(ms) ms * 1000
-#define BUFFER(str, plus) strlen(str) + plus
 
 static const size_t COMP_COUNT = ARRAY_LENGTH(components);
 
@@ -255,7 +253,7 @@ void script(Component *c) {
 
 int main() {
     while (true) {
-        char final_str[200] = "xsetroot -name \"";
+        char final_str[STATUSBAR_MAX_STRING_LENGTH] = "xsetroot -name \"";
         for (int i = 0; i < COMP_COUNT; i++) {
             Component *c = components + i;
             c->fn(c);
@@ -264,7 +262,7 @@ int main() {
         strcat(final_str, "\"");
 
         system(final_str);
-        usleep(100000);
+        usleep(MILISECONDS_TO_MICROSECONDS(100));
     }
 
     return 0;
