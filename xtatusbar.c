@@ -39,13 +39,13 @@ bool must_generate(Component *c) {
 }
 
 void disk(Component *c) {
-    if (!c->result && !(c->result = malloc(strlen(c->pattern) + 2))) {
-        c->result = "-";
-    } else if (must_generate(c)) {
+    int length = strlen(c->pattern) + 2;
+    if (!c->result && !(c->result = malloc(length))) return;
+
+    if (must_generate(c)) {
         struct statvfs stat;
         if (statvfs("/", &stat) != 0) {
             perror("Error with statvfs");
-            c->result = "-";
             return;
         }
 
@@ -55,14 +55,16 @@ void disk(Component *c) {
 
         short used_disk_perc = (double)used_blocks / total_blocks * 100;
 
-        sprintf(c->result, c->pattern, used_disk_perc);
+        snprintf(c->result, length, c->pattern, used_disk_perc);
     }
 }
 
 void date(Component *c) {
     if (!c->result && !(c->result = malloc(strlen(c->pattern) + 50))) {
-        c->result = "-";
-    } else if (must_generate(c)) {
+        return;
+    }
+
+    if (must_generate(c)) {
         time_t now;
         struct tm *local;
 
@@ -74,9 +76,10 @@ void date(Component *c) {
 }
 
 void ram(Component *c) {
-    if (!c->result && !(c->result = malloc(strlen(c->pattern) + 2))) {
-        c->result = "-";
-    } else if (must_generate(c)) {
+    int length = strlen(c->pattern) + 2;
+    if (!c->result && !(c->result = malloc(length))) return;
+
+    if (must_generate(c)) {
         FILE *fp;
         char line[1024];
         unsigned long total_mem, free_mem, buffers, cached, used_mem;
@@ -85,7 +88,6 @@ void ram(Component *c) {
         fp = fopen("/proc/meminfo", "r");
         if (fp == NULL) {
             perror("Failed to open /proc/meminfo\n");
-            c->result = "-";
             return;
         }
 
@@ -107,27 +109,31 @@ void ram(Component *c) {
 
         used_ram_perc = ((double)used_mem / total_mem) * 100;
 
-        sprintf(c->result, c->pattern, used_ram_perc);
+        snprintf(c->result, length, c->pattern, used_ram_perc);
     }
 }
 
 void network(Component *c) {
-    if (!c->result && !(c->result = malloc(strlen(c->pattern) + 2))) {
-        c->result = "-";
-    } else if (must_generate(c)) {
-        int status = system("ping -c 1 -q 8.8.8.8 > /dev/null 2>&1");
-        sprintf(c->result, c->pattern, (status == 0 ? "󰱓 " : "󰅛 "));
+    int length = strlen(c->pattern) + 4;
+    if (!c->result && !(c->result = malloc(length))) return;
+
+    if (must_generate(c)) {
+        int ret = system("ping -c 1 -q 8.8.8.8 > /dev/null 2>&1");
+        int status = WEXITSTATUS(ret);
+
+        snprintf(c->result, length, c->pattern,
+                 (status == 0 ? "󰀂 " : "󰯡 "));
     }
 }
 
 void temperature(Component *c) {
-    if (!c->result && !(c->result = malloc(strlen(c->pattern) + 2))) {
-        c->result = "-";
-    } else if (must_generate(c)) {
+    int length = strlen(c->pattern) + 2;
+    if (!c->result && !(c->result = malloc(length))) return;
+
+    if (must_generate(c)) {
         FILE *thermal_file = fopen(TEMPERATURE_FILE, "r");
         if (thermal_file == NULL) {
             perror("Error opening thermal file");
-            c->result = "-";
             return;
         }
 
@@ -137,7 +143,7 @@ void temperature(Component *c) {
 
         short temp = temperature / 1000;
 
-        sprintf(c->result, c->pattern, temp);
+        snprintf(c->result, length, c->pattern, temp);
     }
 }
 
@@ -159,13 +165,14 @@ void get_stats(long long *idle, long long *total) {
 }
 
 void cpu(Component *c) {
-    if (!c->result && !(c->result = malloc(strlen(c->pattern) + 2))) {
-        c->result = "-";
-    } else if (must_generate(c)) {
+    int length = strlen(c->pattern) + 2;
+    if (!c->result && !(c->result = malloc(length))) return;
+
+    if (must_generate(c)) {
         long long idle1, total1, idle2, total2;
 
         get_stats(&idle1, &total1);
-        sleep(1);
+        usleep(MILISECONDS_TO_MICROSECONDS(100));
         get_stats(&idle2, &total2);
 
         long long total_diff = total2 - total1;
@@ -173,14 +180,15 @@ void cpu(Component *c) {
 
         short usage = (double)(total_diff - idle_diff) / total_diff * 100.0;
 
-        sprintf(c->result, c->pattern, usage);
+        snprintf(c->result, length, c->pattern, usage);
     }
 }
 
 void volume(Component *c) {
-    if (!c->result && !(c->result = malloc(strlen(c->pattern) + 5))) {
-        c->result = "-";
-    } else if (must_generate(c)) {
+    int length = strlen(c->pattern) + 2;
+    if (!c->result && !(c->result = malloc(length))) return;
+
+    if (must_generate(c)) {
         long min, max, volume;
         snd_mixer_t *handle;
         snd_mixer_selem_id_t *sid;
@@ -213,15 +221,16 @@ void volume(Component *c) {
             char str[3];
             sprintf(str, "%hd%%", percentage);
 
-            sprintf(c->result, c->pattern, str);
+            snprintf(c->result, length, c->pattern, str);
         }
     }
 }
 
 void battery(Component *c) {
-    if (!c->result && !(c->result = malloc(strlen(c->pattern) + 5))) {
-        c->result = "-";
-    } else if (must_generate(c)) {
+    int length = strlen(c->pattern) + 5;
+    if (!c->result && !(c->result = malloc(length))) return;
+
+    if (must_generate(c)) {
         FILE *fp;
         int capacity;
 
@@ -229,34 +238,32 @@ void battery(Component *c) {
 
         if (fp == NULL) {
             perror("Error opening battery capacity file");
-            c->result = "-";
             return;
         }
 
         if (fscanf(fp, "%d", &capacity) != 1) {
             fprintf(stderr, "Error reading capacity\n");
             fclose(fp);
-            c->result = "-";
             return;
         }
 
         fclose(fp);
 
-        sprintf(c->result, c->pattern, capacity);
+        snprintf(c->result, length, c->pattern, capacity);
     }
 }
 
 void script(Component *c) {
-    if (!c->result && !(c->result = malloc(strlen(c->pattern) + 80))) {
-        c->result = "-";
-    } else if (must_generate(c)) {
+    int length = strlen(c->pattern) + 80;
+    if (!c->result && !(c->result = malloc(length))) return;
+
+    if (must_generate(c)) {
         FILE *fp;
         char path[80];
 
         fp = popen(SCRIPT, "r");
         if (fp == NULL) {
             perror("Failed to run command\n");
-            c->result = "-";
             return;
         }
 
@@ -264,7 +271,7 @@ void script(Component *c) {
 
         pclose(fp);
 
-        sprintf(c->result, c->pattern, path);
+        snprintf(c->result, length, c->pattern, path);
     }
 }
 
