@@ -141,21 +141,39 @@ void temperature(Component *c) {
     }
 }
 
+void get_stats(long long *idle, long long *total) {
+    FILE *fp = fopen("/proc/stat", "r");
+    if (!fp) {
+        perror("Could not open /proc/stat");
+        return;
+    }
+
+    long long user, nice, system, idle_val, iowait, irq, softirq, steal;
+    fscanf(fp, "cpu %lld %lld %lld %lld %lld %lld %lld %lld", &user, &nice,
+           &system, &idle_val, &iowait, &irq, &softirq, &steal);
+
+    *idle = idle_val + iowait;
+    *total = user + nice + system + idle_val + iowait + irq + softirq + steal;
+
+    fclose(fp);
+}
+
 void cpu(Component *c) {
     if (!c->result && !(c->result = malloc(strlen(c->pattern) + 2))) {
         c->result = "-";
     } else if (must_generate(c)) {
-        struct sysinfo info;
-        if (sysinfo(&info) != 0) {
-            perror("Error getting sysinfo");
-            c->result = "-";
-            return;
-        }
+        long long idle1, total1, idle2, total2;
 
-        double total_cpu_time = info.totalram - info.freeram;
-        short used_cpu = (total_cpu_time / info.totalram) * 100;
+        get_stats(&idle1, &total1);
+        sleep(1);
+        get_stats(&idle2, &total2);
 
-        sprintf(c->result, c->pattern, used_cpu);
+        long long total_diff = total2 - total1;
+        long long idle_diff = idle2 - idle1;
+
+        short usage = (double)(total_diff - idle_diff) / total_diff * 100.0;
+
+        sprintf(c->result, c->pattern, usage);
     }
 }
 
@@ -204,28 +222,27 @@ void battery(Component *c) {
     if (!c->result && !(c->result = malloc(strlen(c->pattern) + 5))) {
         c->result = "-";
     } else if (must_generate(c)) {
-        const int MAX_BUF = 128;
-        FILE *file;
-        char buffer[MAX_BUF];
-        int battery_percentage;
+        FILE *fp;
+        int capacity;
 
-        file = fopen(BATTERY_FILE, "r");
-        if (file == NULL) {
-            perror("Error opening file to get battery info");
+        fp = fopen(BATTERY_FILE, "r");
+
+        if (fp == NULL) {
+            perror("Error opening battery capacity file");
             c->result = "-";
             return;
         }
 
-        while (fgets(buffer, MAX_BUF, file)) {
-            if (strstr(buffer, "POWER_SUPPLY_CAPACITY=") != NULL) {
-                sscanf(buffer, "POWER_SUPPLY_CAPACITY=%d", &battery_percentage);
-                break;
-            }
+        if (fscanf(fp, "%d", &capacity) != 1) {
+            fprintf(stderr, "Error reading capacity\n");
+            fclose(fp);
+            c->result = "-";
+            return;
         }
 
-        fclose(file);
+        fclose(fp);
 
-        sprintf(c->result, c->pattern, battery_percentage);
+        sprintf(c->result, c->pattern, capacity);
     }
 }
 

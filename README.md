@@ -7,11 +7,16 @@
 - This library has been developed on and for Linux following open source philosophy.
 
 ## Installation
-- First step:
+- Using make:
 ```bash
 git clone https://github.com/javiorfo/xtatusbar
 cd xtatusbar
 sudo make clean install
+```
+
+- Using yay (AUR Arch Linux):
+```bash
+yay -S xtatusbar
 ```
 
 - In your **~/.xinitrc** to start in every login
@@ -48,7 +53,7 @@ static Component components[] = {
     {.pattern = "  VOL %s | ", .wait_ms = 100, .fn = volume},
     {.pattern = "%s NET | ", .wait_ms = 5000, .fn = network},
     {.pattern = "  %s ", .wait_ms = 1000, .fn = date},
-/*     {.pattern = "  BAT %d%% | ", .wait_ms = 5000, .fn = battery},
+/*     {.pattern = "  BAT %d%% | ", .wait_ms = 5000, .fn = battery},
     {.pattern = "CUSTOM %s ", .wait_ms = 1000, .fn = script}, */
 };
 
