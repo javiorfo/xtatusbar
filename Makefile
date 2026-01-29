@@ -1,9 +1,9 @@
 CC = gcc
-CFLAGS = -Wall
+CFLAGS = -Wall -O2
 TARGET = xtatusbar
-SRC = xtatusbar.c
+SRC = src/*.c
 DESTDIR = /usr/local/bin
-LIBS = -lasound
+LIBS = -lasound -lX11
 
 all: $(TARGET)
 

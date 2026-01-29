@@ -1,4 +1,4 @@
-#include "xtatusbar.h"
+#include "components.h"
 #include <stdint.h>
 
 // First element is a string interpolation

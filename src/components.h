@@ -2,6 +2,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define MILISECONDS_TO_MICROSECONDS(ms) ms * 1000
+
 struct Component;
 typedef void (*function)(struct Component *c);
 
@@ -22,4 +24,4 @@ void network(Component*);
 void volume(Component*);
 void battery(Component*);
 void execute(Component*);
-bool must_generate(Component *c);
+bool must_generate(Component *);

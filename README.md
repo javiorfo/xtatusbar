@@ -2,7 +2,7 @@
 *Configurable statusbar for Xorg server using xsetroot*
 
 ## Caveats
-- Dependencies: `xsetroot` and `asoundlib`
+- Dependencies: `Xlib` and `asoundlib`
 - Influenced by suckless software (changes are doing by config.h file and recompilation).
 - This library has been developed on and for Linux following open source philosophy.
 
@@ -33,10 +33,10 @@ xtatusbar &
 | DISK USAGE | :heavy_check_mark: | percentage |
 | VOLUME LEVEL | :heavy_check_mark: | Level and Mute status |
 | BATTERY LEVEL | :heavy_check_mark: | percentage |
-| WEATHER | :x: | |
+| WEATHER | :heavy_check_mark: | using [wttr](https://wttr.in) and SCRIPT COMPONENT |
 | NETWORK STATUS | :heavy_check_mark: | Receive and send packages |
 | DATE | :heavy_check_mark: | could be custimizable |
-| CUSTOM COMPONENT | :heavy_check_mark: | coding in C |
+| SCRIPT COMPONENT | :heavy_check_mark: | Shell script |
 
 ## Customizable config.h
 - Edit [config.h](https://github.com/javiorfo/xtatusbar/blob/master/config.h) to change values or configurations (then recompile)

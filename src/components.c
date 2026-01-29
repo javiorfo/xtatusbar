@@ -1,21 +1,13 @@
 #include "config.h"
 #include <alsa/asoundlib.h>
-#include <net/if.h>
+#include <arpa/inet.h>
+#include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/ioctl.h>
 #include <sys/statvfs.h>
-#include <sys/sysinfo.h>
 #include <time.h>
-#include <unistd.h>
-
-#define STATUSBAR_MAX_STRING_LENGTH 200
-#define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof(arr[0]));
-#define MILISECONDS_TO_MICROSECONDS(ms) ms * 1000
-
-static const size_t COMP_COUNT = ARRAY_LENGTH(components);
 
 bool must_generate(Component *c) {
     struct timeval current_time;
@@ -39,7 +31,7 @@ bool must_generate(Component *c) {
 }
 
 void disk(Component *c) {
-    int length = strlen(c->pattern) + 2;
+    size_t length = strlen(c->pattern) + 2;
     if (!c->result && !(c->result = malloc(length))) return;
 
     if (must_generate(c)) {
@@ -60,9 +52,7 @@ void disk(Component *c) {
 }
 
 void date(Component *c) {
-    if (!c->result && !(c->result = malloc(strlen(c->pattern) + 50))) {
-        return;
-    }
+    if (!c->result && !(c->result = malloc(strlen(c->pattern) + 50))) return;
 
     if (must_generate(c)) {
         time_t now;
@@ -76,7 +66,7 @@ void date(Component *c) {
 }
 
 void ram(Component *c) {
-    int length = strlen(c->pattern) + 2;
+    size_t length = strlen(c->pattern) + 2;
     if (!c->result && !(c->result = malloc(length))) return;
 
     if (must_generate(c)) {
@@ -113,21 +103,42 @@ void ram(Component *c) {
     }
 }
 
+bool check_connection() {
+    struct sockaddr_in serv_addr;
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+
+    if (sock < 0) return false;
+
+    struct timeval timeout;
+    timeout.tv_sec = 1;
+    timeout.tv_usec = 0;
+    setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(53);
+    inet_pton(AF_INET, "8.8.8.8", &serv_addr.sin_addr);
+
+    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+        close(sock);
+        return false;
+    }
+
+    close(sock);
+    return true;
+}
+
 void network(Component *c) {
-    int length = strlen(c->pattern) + 4;
+    size_t length = strlen(c->pattern) + 4;
     if (!c->result && !(c->result = malloc(length))) return;
 
     if (must_generate(c)) {
-        int ret = system("ping -c 1 -q 8.8.8.8 > /dev/null 2>&1");
-        int status = WEXITSTATUS(ret);
-
         snprintf(c->result, length, c->pattern,
-                 (status == 0 ? "󰀂 " : "󰯡 "));
+                 (check_connection() ? "󰀂 " : "󰯡 "));
     }
 }
 
 void temperature(Component *c) {
-    int length = strlen(c->pattern) + 2;
+    size_t length = strlen(c->pattern) + 2;
     if (!c->result && !(c->result = malloc(length))) return;
 
     if (must_generate(c)) {
@@ -165,7 +176,7 @@ void get_stats(long long *idle, long long *total) {
 }
 
 void cpu(Component *c) {
-    int length = strlen(c->pattern) + 2;
+    size_t length = strlen(c->pattern) + 2;
     if (!c->result && !(c->result = malloc(length))) return;
 
     if (must_generate(c)) {
@@ -185,7 +196,7 @@ void cpu(Component *c) {
 }
 
 void volume(Component *c) {
-    int length = strlen(c->pattern) + 2;
+    size_t length = strlen(c->pattern) + 2;
     if (!c->result && !(c->result = malloc(length))) return;
 
     if (must_generate(c)) {
@@ -227,7 +238,7 @@ void volume(Component *c) {
 }
 
 void battery(Component *c) {
-    int length = strlen(c->pattern) + 5;
+    size_t length = strlen(c->pattern) + 5;
     if (!c->result && !(c->result = malloc(length))) return;
 
     if (must_generate(c)) {
@@ -254,7 +265,7 @@ void battery(Component *c) {
 }
 
 void script(Component *c) {
-    int length = strlen(c->pattern) + 80;
+    size_t length = strlen(c->pattern) + 80;
     if (!c->result && !(c->result = malloc(length))) return;
 
     if (must_generate(c)) {
@@ -273,21 +284,4 @@ void script(Component *c) {
 
         snprintf(c->result, length, c->pattern, path);
     }
-}
-
-int main() {
-    while (true) {
-        char final_str[STATUSBAR_MAX_STRING_LENGTH] = "xsetroot -name \"";
-        for (int i = 0; i < COMP_COUNT; i++) {
-            Component *c = components + i;
-            c->fn(c);
-            strcat(final_str, c->result);
-        }
-        strcat(final_str, "\"");
-
-        system(final_str);
-        usleep(MILISECONDS_TO_MICROSECONDS(100));
-    }
-
-    return 0;
 }
