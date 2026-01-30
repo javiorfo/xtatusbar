@@ -1,0 +1,35 @@
+.TH XTATUSBAR 1 "JANUARY 2026" "1.0" "User Manuals"
+.SH NAME
+xtatusbar \- a highly configurable system status bar generator
+.SH SYNOPSIS
+.B xtatusbar
+[\fB\-\-separator\fR \fISEP\fR] [\fIMODULE_OPTIONS\fR]...
+.SH DESCRIPTION
+.B xtatusbar
+collects information from various system sources (Battery, CPU, RAM, Volume, etc.) 
+and outputs a formatted string. Each component can be enabled/disabled, timed, and 
+re-patterned via command-line arguments.
+.SH GLOBAL OPTIONS
+.TP
+\fB\-\-separator\fR \fISEP\fR
+Sets the string used to separate components. Default is "|".
+.SH MODULE OPTIONS
+Each component (bat, script, cpu, ram, temp, disk, vol, net, date) supports the following flags:
+.TP
+\fB\-\-\fR[\fImodule\fR]\fB\-enabled\fR [\fItrue|false\fR]
+Enable or disable the specific component.
+.TP
+\fB\-\-\fR[\fImodule\fR]\fB\-time\fR \fIMILLISECONDS\fR
+Set the update interval in milliseconds.
+.TP
+\fB\-\-\fR[\fImodule\fR]\fB\-pattern\fR \fIPATTERN\fR
+Set the format string (e.g., "CPU %d%%").
+.TP
+\fB\-\-\fR[\fImodule\fR]\fB\-file\fR \fIPATH\fR
+Specify a custom sysfs path or script file (Available for: bat, script, temp).
+.SH EXAMPLES
+.B xtatusbar \-\-separator " :: " \-\-cpu\-pattern "LOAD %d" \-\-bat\-enabled false
+.PP
+This runs xtatusbar with a custom separator, changes the CPU format, and hides the battery.
+.SH AUTHOR
+Created by Javier Orfo.

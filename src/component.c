@@ -1,4 +1,4 @@
-#include "config.h"
+#include "util.h"
 #include <alsa/asoundlib.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
@@ -9,30 +9,10 @@
 #include <sys/statvfs.h>
 #include <time.h>
 
-bool must_generate(Component *c) {
-    struct timeval current_time;
-    gettimeofday(&current_time, NULL);
+void get_disk(Component *c) {
+    if (!c->pattern_len) c->pattern_len = strlen(c->pattern) + 2;
 
-    if (!c->result) {
-        c->last_time = current_time;
-        return true;
-    }
-
-    uint64_t elapsed_ms =
-        ((current_time.tv_sec - c->last_time.tv_sec) * 1000) +
-        ((current_time.tv_usec - c->last_time.tv_usec) / 1000);
-
-    if (elapsed_ms >= c->wait_ms) {
-        c->last_time = current_time;
-        return true;
-    }
-
-    return false;
-}
-
-void disk(Component *c) {
-    size_t length = strlen(c->pattern) + 2;
-    if (!c->result && !(c->result = malloc(length))) return;
+    if (!c->result && !(c->result = malloc(c->pattern_len))) return;
 
     if (must_generate(c)) {
         struct statvfs stat;
@@ -47,11 +27,11 @@ void disk(Component *c) {
 
         short used_disk_perc = (double)used_blocks / total_blocks * 100;
 
-        snprintf(c->result, length, c->pattern, used_disk_perc);
+        snprintf(c->result, c->pattern_len, c->pattern, used_disk_perc);
     }
 }
 
-void date(Component *c) {
+void get_date(Component *c) {
     if (!c->result && !(c->result = malloc(strlen(c->pattern) + 50))) return;
 
     if (must_generate(c)) {
@@ -61,13 +41,14 @@ void date(Component *c) {
         time(&now);
         local = localtime(&now);
 
-        strftime(c->result, 80, DATE_FORMAT, local);
+        strftime(c->result, 80, c->pattern, local);
     }
 }
 
-void ram(Component *c) {
-    size_t length = strlen(c->pattern) + 2;
-    if (!c->result && !(c->result = malloc(length))) return;
+void get_ram(Component *c) {
+    if (!c->pattern_len) c->pattern_len = strlen(c->pattern) + 2;
+
+    if (!c->result && !(c->result = malloc(c->pattern_len))) return;
 
     if (must_generate(c)) {
         FILE *fp;
@@ -96,10 +77,9 @@ void ram(Component *c) {
         fclose(fp);
 
         used_mem = total_mem - free_mem - buffers - cached;
-
         used_ram_perc = ((double)used_mem / total_mem) * 100;
 
-        snprintf(c->result, length, c->pattern, used_ram_perc);
+        snprintf(c->result, c->pattern_len, c->pattern, used_ram_perc);
     }
 }
 
@@ -127,22 +107,24 @@ bool check_connection() {
     return true;
 }
 
-void network(Component *c) {
-    size_t length = strlen(c->pattern) + 4;
-    if (!c->result && !(c->result = malloc(length))) return;
+void get_network(Component *c) {
+    if (!c->pattern_len) c->pattern_len = strlen(c->pattern) + 4;
+
+    if (!c->result && !(c->result = malloc(c->pattern_len))) return;
 
     if (must_generate(c)) {
-        snprintf(c->result, length, c->pattern,
+        snprintf(c->result, c->pattern_len, c->pattern,
                  (check_connection() ? "󰀂 " : "󰯡 "));
     }
 }
 
-void temperature(Component *c) {
-    size_t length = strlen(c->pattern) + 2;
-    if (!c->result && !(c->result = malloc(length))) return;
+void get_temperature(Component *c) {
+    if (!c->pattern_len) c->pattern_len = strlen(c->pattern) + 2;
+
+    if (!c->result && !(c->result = malloc(c->pattern_len))) return;
 
     if (must_generate(c)) {
-        FILE *thermal_file = fopen(TEMPERATURE_FILE, "r");
+        FILE *thermal_file = fopen(c->file, "r");
         if (thermal_file == NULL) {
             perror("Error opening thermal file");
             return;
@@ -154,7 +136,7 @@ void temperature(Component *c) {
 
         short temp = temperature / 1000;
 
-        snprintf(c->result, length, c->pattern, temp);
+        snprintf(c->result, c->pattern_len, c->pattern, temp);
     }
 }
 
@@ -175,15 +157,16 @@ void get_stats(long long *idle, long long *total) {
     fclose(fp);
 }
 
-void cpu(Component *c) {
-    size_t length = strlen(c->pattern) + 2;
-    if (!c->result && !(c->result = malloc(length))) return;
+void get_cpu(Component *c) {
+    if (!c->pattern_len) c->pattern_len = strlen(c->pattern) + 2;
+
+    if (!c->result && !(c->result = malloc(c->pattern_len))) return;
 
     if (must_generate(c)) {
         long long idle1, total1, idle2, total2;
 
         get_stats(&idle1, &total1);
-        usleep(MILISECONDS_TO_MICROSECONDS(100));
+        msleep(100);
         get_stats(&idle2, &total2);
 
         long long total_diff = total2 - total1;
@@ -191,13 +174,14 @@ void cpu(Component *c) {
 
         short usage = (double)(total_diff - idle_diff) / total_diff * 100.0;
 
-        snprintf(c->result, length, c->pattern, usage);
+        snprintf(c->result, c->pattern_len, c->pattern, usage);
     }
 }
 
-void volume(Component *c) {
-    size_t length = strlen(c->pattern) + 2;
-    if (!c->result && !(c->result = malloc(length))) return;
+void get_volume(Component *c) {
+    if (!c->pattern_len) c->pattern_len = strlen(c->pattern) + 2;
+
+    if (!c->result && !(c->result = malloc(c->pattern_len))) return;
 
     if (must_generate(c)) {
         long min, max, volume;
@@ -211,7 +195,7 @@ void volume(Component *c) {
         snd_mixer_selem_register(handle, NULL, NULL);
         snd_mixer_load(handle);
 
-        snd_mixer_selem_id_alloca(&sid);
+        snd_mixer_selem_id_malloc(&sid);
         snd_mixer_selem_id_set_index(sid, 0);
         snd_mixer_selem_id_set_name(sid, selem_name);
         snd_mixer_elem_t *elem = snd_mixer_find_selem(handle, sid);
@@ -225,6 +209,7 @@ void volume(Component *c) {
             snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
             snd_mixer_selem_get_playback_volume(elem, SND_MIXER_SCHN_MONO,
                                                 &volume);
+            snd_mixer_selem_id_free(sid);
             snd_mixer_close(handle);
 
             int percentage = (int)((volume - min) * 100 / (max - min));
@@ -232,20 +217,21 @@ void volume(Component *c) {
             char str[3];
             sprintf(str, "%hd%%", percentage);
 
-            snprintf(c->result, length, c->pattern, str);
+            snprintf(c->result, c->pattern_len, c->pattern, str);
         }
     }
 }
 
-void battery(Component *c) {
-    size_t length = strlen(c->pattern) + 5;
-    if (!c->result && !(c->result = malloc(length))) return;
+void get_battery(Component *c) {
+    if (!c->pattern_len) c->pattern_len = strlen(c->pattern) + 5;
+
+    if (!c->result && !(c->result = malloc(c->pattern_len))) return;
 
     if (must_generate(c)) {
         FILE *fp;
         int capacity;
 
-        fp = fopen(BATTERY_FILE, "r");
+        fp = fopen(c->file, "r");
 
         if (fp == NULL) {
             perror("Error opening battery capacity file");
@@ -260,19 +246,20 @@ void battery(Component *c) {
 
         fclose(fp);
 
-        snprintf(c->result, length, c->pattern, capacity);
+        snprintf(c->result, c->pattern_len, c->pattern, capacity);
     }
 }
 
-void script(Component *c) {
-    size_t length = strlen(c->pattern) + 80;
-    if (!c->result && !(c->result = malloc(length))) return;
+void execute(Component *c) {
+    if (!c->pattern_len) c->pattern_len = strlen(c->pattern) + 20;
+
+    if (!c->result && !(c->result = malloc(c->pattern_len))) return;
 
     if (must_generate(c)) {
         FILE *fp;
         char path[80];
 
-        fp = popen(SCRIPT, "r");
+        fp = popen(c->file, "r");
         if (fp == NULL) {
             perror("Failed to run command\n");
             return;
@@ -282,6 +269,6 @@ void script(Component *c) {
 
         pclose(fp);
 
-        snprintf(c->result, length, c->pattern, path);
+        snprintf(c->result, c->pattern_len, c->pattern, path);
     }
 }

@@ -1,5 +1,5 @@
 CompileFlags:
-  Add: [-std=c23, -Wall]
+  Add: [-std=c23, -Wall, -D_POSIX_C_SOURCE=200809L]
 
 InlayHints:
   Designators: Yes

@@ -1,4 +1,5 @@
-#include "config.h"
+#include "component.h"
+#include "util.h"
 #include <X11/Xlib.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -6,15 +7,15 @@
 #include <unistd.h>
 
 #define STATUSBAR_MAX_STRING_LENGTH 200
-#define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof(arr[0]));
 
-static const size_t COMP_COUNT = ARRAY_LENGTH(components);
+int main(int argc, char *argv[]) {
+    static Component components[9];
+    int size = process(argc, argv, components);
 
-int main() {
     Display *display = XOpenDisplay(NULL);
     if (!display) {
         perror("Cannot open display\n");
-        exit(1);
+        return EXIT_FAILURE;
     }
 
     Window root = DefaultRootWindow(display);
@@ -23,7 +24,7 @@ int main() {
         char final_str[STATUSBAR_MAX_STRING_LENGTH];
         int current_len = 0;
 
-        for (int i = 0; i < COMP_COUNT; i++) {
+        for (int i = 0; i < size; i++) {
             Component *c = components + i;
             c->fn(c);
 
@@ -40,13 +41,11 @@ int main() {
         }
 
         XStoreName(display, root, final_str);
-
         XFlush(display);
-
-        usleep(MILISECONDS_TO_MICROSECONDS(200));
+        msleep(200);
     }
 
     XCloseDisplay(display);
 
-    return 0;
+    return EXIT_SUCCESS;
 }

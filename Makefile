@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -O2
+CFLAGS = -Wall -O2 -std=c23 -D_POSIX_C_SOURCE=200809L
 TARGET = xtatusbar
 SRC = src/*.c
 DESTDIR = /usr/local/bin
